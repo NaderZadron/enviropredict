@@ -6,12 +6,14 @@ import os
 import geopandas as gpd
 import json
 import geojson
+from flask_cors import CORS
 
 
 # Load environment variables from .env file
 load_dotenv()
 
 app = Flask(__name__)
+CORS(app)
 
 @app.route('/api')
 def hello():
