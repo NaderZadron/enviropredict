@@ -3,6 +3,10 @@ from water import get_water_results
 from air import get_air_results
 from dotenv import load_dotenv
 import os
+import geopandas as gpd
+import json
+import geojson
+
 
 # Load environment variables from .env file
 load_dotenv()
@@ -27,7 +31,41 @@ def air_results():
     # result to UI = {"result": "This is the result for air: This is an arg from Air API"}
     return jsonify({'result': result})
 
-port = int(os.getenv("PORT", 3000))
+@app.route('/api/current')
+def current():
+    geojson_path = './us-state-boundaries.geojson'
+    gdf = gpd.read_file(geojson_path)
+
+    current_air_data_path = './currentAir.json'
+    current_water_data_path = './currentWater.json'
+    current_air_data = load_json_file(current_air_data_path)
+    current_water_data = load_json_file(current_water_data_path)
+
+    features_with_values = []
+    for feature in gdf.iterfeatures():
+        state_name = feature['properties']['name']
+        water_value = next((item['Data'] for item in current_water_data if item['State'] == state_name), None)
+        air_value = next((item['Data'] for item in current_air_data if item['State'] == state_name), None)
+
+        feature['properties']['water'] = water_value
+        feature['properties']['air'] = air_value
+
+        features_with_values.append(feature)
+
+    feature_collection = geojson.FeatureCollection(features_with_values)
+    return jsonify(feature_collection)
+
+
+
+
+def load_json_file(file_path):
+    with open(file_path, 'r') as file:
+        data = json.load(file)
+    return data
+
+port = int(os.getenv("PORT", 3001))
+# port = 3002
+print(port)
 if __name__ == '__main__':
     # Use Gunicorn to run the Flask app
     from gunicorn.app.base import BaseApplication
