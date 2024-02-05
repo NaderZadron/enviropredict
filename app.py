@@ -1,4 +1,4 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 from water import get_water_results
 from air import get_air_results
 from dotenv import load_dotenv
@@ -19,19 +19,32 @@ CORS(app)
 def hello():
     return 'Hello, World!'
 
-@app.route('/api/water-results')
-def water_results():
-    arg = 'This is an arg from water API'
-    result = get_water_results(arg)
-    # result to UI = {"result": "This is the result for water: This is an arg from water API"}
-    return jsonify({'result': result})
-
-@app.route('/api/air-results')
+@app.route('/api/predict')
 def air_results():
-    arg = 'This is an arg from Air API'
-    result = get_air_results(arg)
-    # result to UI = {"result": "This is the result for air: This is an arg from Air API"}
-    return jsonify({'result': result})
+    geojson_path = './us-state-boundaries.geojson'
+    gdf = gpd.read_file(geojson_path)
+    date = request.args.get('date')
+    
+    predicted_air_data_path = './airPredictions2.json'
+    predicted_air_data = load_json_file(predicted_air_data_path)
+
+    predicted_water_data_path = './waterPredictions.json'
+    predicted_water_data = load_json_file(predicted_water_data_path)
+
+    features_with_values = []
+    for feature in gdf.iterfeatures():
+        state_name = feature['properties']['name']
+        air_value = next((item['Data'] for item in predicted_air_data if item['State'] == state_name and item['Date'] == date), None)
+        water_value = next((item['Data'] for item in predicted_water_data if item['State'] == state_name and item['Date'] == date), None)
+
+        feature['properties']['air'] = air_value
+        feature['properties']['water'] = water_value
+
+        features_with_values.append(feature)
+
+
+    feature_collection = geojson.FeatureCollection(features_with_values)
+    return jsonify(feature_collection)
 
 @app.route('/api/current')
 def current():

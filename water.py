@@ -19,5 +19,3 @@ def get_water_results(Date, State):
 
     result = f"This is the result for water: {predicted_pollution}"
     return result
-
-get_water_results('02/2024', 'Alabama')
